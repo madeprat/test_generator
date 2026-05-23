@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generador de Tests ISO/IEC</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #141b34;
+      --text: #eef2ff;
+      --muted: #b9c2e6;
+      --ok: #1db954;
+      --bad: #ff5d73;
+      --accent: #6ea8fe;
+      --accent-2: #9b7bff;
+      --border: #2a3567;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Inter, Segoe UI, Arial, sans-serif;
+      background: linear-gradient(180deg, #0a0f1f, #101733 45%, #0d1430);
+      color: var(--text);
+      margin: 0;
+      padding: 32px;
+    }
+    .wrap { max-width: 900px; margin: 0 auto; }
+    .card {
+      background: rgba(20, 27, 52, 0.92);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 28px;
+      margin-bottom: 24px;
+    }
+    h1 { margin: 0 0 8px; font-size: 32px; }
+    .lead { margin: 0 0 24px; color: var(--muted); font-size: 15px; line-height: 1.6; }
+    label { display: block; font-weight: 700; margin: 14px 0 6px; color: var(--text); }
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: #0d1530;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      margin-bottom: 12px;
+    }
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 12px 20px;
+      font-weight: 700;
+      cursor: pointer;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: white;
+    }
+    button:hover { opacity: 0.9; }
+    .success {
+      background: var(--ok) !important;
+    }
+    .error {
+      background: var(--bad);
+      padding: 14px;
+      border-radius: 10px;
+      margin: 14px 0;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .stat-box {
+      background: #0f1733;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .stat-value { font-size: 24px; font-weight: 700; }
+    .stat-label { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .hidden { display: none; }
+    .progress { margin: 12px 0; }
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #0f1733;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.3s;
+    }
+    .info { color: var(--muted); font-size: 12px; margin: 8px 0; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Generador de Tests ISO/IEC</h1>
+    <p class="lead">Convierte archivos de texto en tests interactivos en HTML con múltiples formatos soportados</p>
+  </div>
+
+  <div class="card" id="upload-section">
+    <h2 style="margin-top:0">1. Carga tu archivo</h2>
+    <label for="file-input">Archivo de texto (.txt)</label>
+    <input type="file" id="file-input" accept=".txt" />
+    <p class="info">✓ Soporta: TEST N: / TEST N - / CLAVE DE RESPUESTAS / CLAVE RAZONADA</p>
+  </div>
+
+  <div class="card" id="metadata-section">
+    <h2 style="margin-top:0">2. Información de la norma</h2>
+    <label for="norm-name">Nombre de la norma / tema *</label>
+    <input type="text" id="norm-name" placeholder="Ej: UNE-EN ISO 19011:2018" />
+    
+    <label for="norm-desc">Descripción (opcional)</label>
+    <input type="text" id="norm-desc" placeholder="Ej: Directrices para la auditoría de sistemas de gestión" />
+  </div>
+
+  <div class="card" id="action-section">
+    <button onclick="parseAndGenerate()" style="width: 100%; padding: 14px;">
+      📊 Analizar archivo y generar HTMLs
+    </button>
+  </div>
+
+  <div class="card hidden" id="results-section">
+    <h2 style="margin-top:0">✓ Generación completada</h2>
+    
+    <div class="progress">
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width: 100%;"></div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat-box">
+        <div class="stat-value" id="test-count">5</div>
+        <div class="stat-label">Tests generados</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="q-count">40</div>
+        <div class="stat-label">Preguntas totales</div>
+      </div>
+    </div>
+
+    <div style="background: #0f1733; padding: 14px; border-radius: 10px; margin: 16px 0; border: 1px solid var(--border);">
+      <h3 style="margin: 0 0 10px; font-size: 14px;">Archivos generados:</h3>
+      <ul id="files-list" style="margin: 0; padding: 0; list-style: none; font-size: 13px;"></ul>
+    </div>
+
+    <button class="success" onclick="downloadAll()" style="width: 100%; margin-bottom: 8px;">
+      ⬇ Descargar como ZIP
+    </button>
+    <button onclick="resetForm()" style="width: 100%; background: #202c57; color: var(--text);">
+      ← Volver a empezar
+    </button>
+  </div>
+
+  <div class="card hidden" id="error-section">
+    <h2 style="margin-top:0; color: var(--bad);">⚠ Error al procesar</h2>
+    <p id="error-text" style="margin: 0; color: var(--bad); font-size: 14px;"></p>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<script>
+let generatedData = {};
+
+function parseAndGenerate() {
+  const fileInput = document.getElementById('file-input');
+  const normName = document.getElementById('norm-name').value.trim();
+  const normDesc = document.getElementById('norm-desc').value.trim();
+  const errorSection = document.getElementById('error-section');
+  const resultsSection = document.getElementById('results-section');
+  
+  errorSection.classList.add('hidden');
+  resultsSection.classList.add('hidden');
+
+  if (!fileInput.files[0]) {
+    showError('Por favor, carga un archivo de texto');
+    return;
+  }
+  
+  if (!normName) {
+    showError('Por favor, ingresa el nombre de la norma');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const content = e.target.result;
+      const tests = parseTests(content);
+      
+      if (tests.length === 0) {
+        showError('No se encontraron tests en el archivo. Verifica el formato.');
+        return;
+      }
+
+      generatedData = { normName, normDesc, tests };
+      renderResults(tests);
+      resultsSection.classList.remove('hidden');
+      document.getElementById('upload-section').style.opacity = '0.5';
+      document.getElementById('upload-section').style.pointerEvents = 'none';
+      document.getElementById('metadata-section').style.opacity = '0.5';
+      document.getElementById('metadata-section').style.pointerEvents = 'none';
+      document.getElementById('action-section').style.opacity = '0.5';
+      document.getElementById('action-section').style.pointerEvents = 'none';
+    } catch (err) {
+      showError(err.message);
+    }
+  };
+  reader.readAsText(fileInput.files[0]);
+}
+
+function parseTests(content) {
+  const tests = [];
+  const lines = content.split('\n');
+  
+  let currentTest = null;
+  let currentQuestion = null;
+  let answerKey = {};
+  let parsingAnswers = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Detecta TEST N: o TEST N - (flexible)
+    if (line.match(/^TEST\s+\d+[\s\-:]/i)) {
+      if (currentTest && currentQuestion && currentQuestion.options && currentQuestion.options.length > 0) {
+        currentTest.questions.push(currentQuestion);
+      }
+      
+      if (currentTest && Object.keys(answerKey).length > 0) {
+        currentTest.answerKey = answerKey;
+      }
+
+      const match = line.match(/^TEST\s+(\d+)[\s\-:]+(.+)/i);
+      currentTest = {
+        number: parseInt(match[1]),
+        title: match[2].trim(),
+        questions: [],
+        answerKey: {}
+      };
+      tests.push(currentTest);
+      currentQuestion = null;
+      answerKey = {};
+      parsingAnswers = false;
+      continue;
+    }
+
+    // Detecta CLAVE DE RESPUESTAS o CLAVE RAZONADA
+    if (line.match(/^CLAVE\s+(DE\s+RESPUESTAS|RAZONADA)/i)) {
+      if (currentQuestion && currentQuestion.options && currentQuestion.options.length > 0) {
+        currentTest.questions.push(currentQuestion);
+      }
+      parsingAnswers = true;
+      continue;
+    }
+
+    if (parsingAnswers && line.match(/^\d+\.\s+Respuesta\s+correcta:\s*([A-D])/i)) {
+      const match = line.match(/^(\d+)\.\s+Respuesta\s+correcta:\s*([A-D])/i);
+      const qNum = parseInt(match[1]);
+      const answerLetter = match[2].toUpperCase();
+      const answerIndex = answerLetter.charCodeAt(0) - 65;
+      answerKey[qNum] = { index: answerIndex, letter: answerLetter };
+      
+      // Buscar justificación
+      if (i + 1 < lines.length) {
+        let j = i + 1;
+        let justification = '';
+        while (j < lines.length) {
+          const nextLine = lines[j].trim();
+          if (nextLine.match(/^\d+\.\s+Respuesta\s+correcta/i) || 
+              nextLine.match(/^TEST\s+\d+/) ||
+              nextLine.match(/^===|^---|-{4,}/)) {
+            break;
+          }
+          if (nextLine && !nextLine.match(/^[A-D]\)/)) {
+            justification += nextLine + ' ';
+          }
+          j++;
+        }
+        answerKey[qNum].explain = justification.trim();
+      }
+      continue;
+    }
+
+    // Detecta preguntas numeradas
+    if (!parsingAnswers && line.match(/^\d+\.\s+/) && currentTest) {
+      if (currentQuestion && currentQuestion.options && currentQuestion.options.length === 4) {
+        currentTest.questions.push(currentQuestion);
+      }
+      
+      const match = line.match(/^\d+\.\s+(.+)/);
+      currentQuestion = {
+        number: currentTest.questions.length + 1,
+        text: match[1].trim(),
+        options: []
+      };
+      continue;
+    }
+
+    // Detecta opciones A, B, C, D
+    if (!parsingAnswers && currentQuestion && line.match(/^[A-D]\)\s+/)) {
+      const match = line.match(/^[A-D]\)\s+(.+)/);
+      if (match) {
+        currentQuestion.options.push(match[1].trim());
+      }
+    }
+  }
+
+  if (currentQuestion && currentQuestion.options && currentQuestion.options.length === 4 && currentTest) {
+    currentTest.questions.push(currentQuestion);
+  }
+  if (currentTest && Object.keys(answerKey).length > 0) {
+    currentTest.answerKey = answerKey;
+  }
+
+  return tests;
+}
+
+function renderResults(tests) {
+  const totalQuestions = tests.reduce((sum, t) => sum + t.questions.length, 0);
+  document.getElementById('test-count').textContent = tests.length;
+  document.getElementById('q-count').textContent = totalQuestions;
+  
+  let filesList = '<li style="padding: 4px 0;">✓ index.html</li>';
+  tests.forEach((t, idx) => {
+    filesList += `<li style="padding: 4px 0;">✓ test_${idx + 1}_${slugify(t.title)}.html</li>`;
+  });
+  document.getElementById('files-list').innerHTML = filesList;
+}
+
+function slugify(text) {
+  return text.toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '_')
+    .replace(/-+/g, '_')
+    .substring(0, 50);
+}
+
+function showError(msg) {
+  const errorSection = document.getElementById('error-section');
+  document.getElementById('error-text').textContent = msg;
+  errorSection.classList.remove('hidden');
+}
+
+function resetForm() {
+  document.getElementById('file-input').value = '';
+  document.getElementById('norm-name').value = '';
+  document.getElementById('norm-desc').value = '';
+  document.getElementById('results-section').classList.add('hidden');
+  document.getElementById('error-section').classList.add('hidden');
+  document.getElementById('upload-section').style.opacity = '1';
+  document.getElementById('upload-section').style.pointerEvents = 'auto';
+  document.getElementById('metadata-section').style.opacity = '1';
+  document.getElementById('metadata-section').style.pointerEvents = 'auto';
+  document.getElementById('action-section').style.opacity = '1';
+  document.getElementById('action-section').style.pointerEvents = 'auto';
+  generatedData = {};
+}
+
+function downloadAll() {
+  const zip = new JSZip();
+  const { normName, normDesc, tests } = generatedData;
+
+  const indexHtml = generateIndexHtml(normName, normDesc, tests);
+  zip.file('index.html', indexHtml);
+
+  tests.forEach((test, idx) => {
+    const testHtml = generateTestHtml(normName, test, idx + 1, tests.length);
+    const filename = `test_${idx + 1}_${slugify(test.title)}.html`;
+    zip.file(filename, testHtml);
+  });
+
+  zip.generateAsync({ type: 'blob' }).then((content) => {
+    saveAs(content, `${slugify(normName)}_tests.zip`);
+  });
+}
+
+function generateIndexHtml(normName, normDesc, tests) {
+  const testCards = tests.map((test, idx) => `
+    <div class='card'>
+      <span class='badge'>Test ${idx + 1}</span>
+      <h3>${test.title}</h3>
+      <p>${test.questions.length} preguntas</p>
+      <a href='./test_${idx + 1}_${slugify(test.title)}.html'>Comenzar →</a>
+    </div>
+  `).join('');
+
+  return `<!doctype html>
+<html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>${normName}</title>
+<style>
+:root{--bg:#0b1020;--panel:#141b34;--text:#eef2ff;--muted:#b9c2e6;--accent:#6ea8fe;--accent-2:#9b7bff;--border:#2a3567;}*{box-sizing:border-box}body{font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#0a0f1f,#101733 45%,#0d1430);color:var(--text);margin:0;padding:32px}.wrap{max-width:1000px;margin:0 auto}.hero{background:linear-gradient(135deg,rgba(110,168,254,.18),rgba(155,123,255,.16));border:1px solid var(--border);border-radius:22px;padding:32px;margin-bottom:32px}h1{margin:0 0 12px;font-size:42px}p.lead{margin:0 0 20px;color:var(--muted);font-size:18px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}.card{background:rgba(20,27,52,.92);border:1px solid var(--border);border-radius:18px;padding:24px;transition:.2s}.card:hover{border-color:#6ea8fe;transform:translateY(-2px)}.card h3{margin:0 0 10px;font-size:20px}.badge{display:inline-block;background:#0f1733;border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:999px;font-size:12px;margin-bottom:12px}.card p{color:var(--muted);margin:0 0 16px;font-size:14px}.card a{display:inline-block;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:700;transition:.2s}.footer{margin-top:32px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px}
+</style></head><body><div class='wrap'><section class='hero'><h1>${normName}</h1><p class='lead'>${normDesc || 'Tests de evaluación con explicaciones detalladas.'}</p></div><div class='grid'>${testCards}</div><section class='footer'>📋 Sin almacenamiento · Cálculos en navegador · Reportes imprimibles</section></div></body></html>`;
+}
+
+function generateTestHtml(normName, test, testNum, totalTests) {
+  const quizData = {
+    title: `${normName} · Test ${testNum}`,
+    questions: test.questions.map((q, idx) => ({
+      q: q.text,
+      options: q.options,
+      correct: test.answerKey[idx + 1] ? test.answerKey[idx + 1].index : 0,
+      explain: test.answerKey[idx + 1] ? test.answerKey[idx + 1].explain : ''
+    }))
+  };
+
+  const quizDataJson = JSON.stringify(quizData)
+    .replace(/\\/g, '\\\\')
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, '\\n')
+    .replace(/\r/g, '\\r');
+
+  return `<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${quizData.title}</title><style>
+:root{--bg:#0b1020;--panel:#141b34;--text:#eef2ff;--muted:#b9c2e6;--ok:#1db954;--bad:#ff5d73;--accent:#6ea8fe;--accent-2:#9b7bff;--border:#2a3567;}*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#0a0f1f,#101733 45%,#0d1430);color:var(--text)}.container{max-width:1100px;margin:0 auto;padding:24px}.hero{background:linear-gradient(135deg,rgba(110,168,254,.18),rgba(155,123,255,.16));border:1px solid var(--border);border-radius:22px;padding:24px}.badges{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 6px}.badge{background:#0f1733;border:1px solid var(--border);color:var(--muted);padding:8px 12px;border-radius:999px;font-size:13px}h1{margin:0 0 10px;font-size:34px}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-top:18px}.card{background:rgba(20,27,52,.92);border:1px solid var(--border);border-radius:18px;padding:18px}label{display:block;font-weight:700;margin:10px 0 6px}input[type=text]{width:100%;padding:14px;border-radius:12px;border:1px solid var(--border);background:#0d1530;color:var(--text)}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}button{border:0;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}.btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white}.btn-secondary{background:#202c57;color:var(--text);border:1px solid var(--border)}.quiz-shell{display:none;margin-top:22px}.question-card{background:rgba(20,27,52,.96);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:16px}.q-text{font-size:20px;font-weight:800;margin:8px 0 14px}.options{display:grid;gap:10px}.option{border:1px solid var(--border);background:#0f1733;border-radius:14px;padding:14px;display:flex;gap:12px;cursor:pointer}.option:hover{border-color:#4b62b0}.option input{margin-top:4px}.option.correct{border-color:rgba(29,185,84,.7);background:rgba(29,185,84,.12)}.option.wrong{border-color:rgba(255,93,115,.7);background:rgba(255,93,115,.12)}.feedback{display:none;margin-top:14px;padding:14px;border-radius:14px;border:1px solid var(--border);background:#111936;font-size:13px}.feedback h4{margin:0 0 8px}.feedback p{margin:6px 0}.scorebar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.metric{background:#0f1733;border:1px solid var(--border);border-radius:16px;padding:14px}.metric .value{font-size:28px;font-weight:900}.metric .label{color:var(--muted);font-size:13px}.report{display:none}.report table{width:100%;border-collapse:collapse;font-size:14px}.report th,.report td{border:1px solid var(--border);padding:10px}.report th{background:#121b39}.pill{display:inline-block;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800}.pill.ok{background:rgba(29,185,84,.16);color:#93ffc0}.pill.bad{background:rgba(255,93,115,.14);color:#ffb2bc}@media print{.hero,.card,.question-card{background:white;color:black;border:1px solid #bbb}.btn-primary,.btn-secondary,.actions{display:none}.report{display:block}.quiz-shell{display:none}}
+</style></head><body><div class="container"><section class="hero" id="hero"><div class="badges"><span class="badge">Test ${testNum}/${totalTests}</span><span class="badge">${test.questions.length} preguntas</span></div><h1>${normName}</h1><div class="grid"><div class="card"><h2>Identificación</h2><label for="username">Usuario</label><input id="username" type="text" maxlength="80" placeholder="Nombre / Cargo" /><div class="actions"><button class="btn-primary" onclick="startQuiz()">Comenzar</button><button class="btn-secondary" onclick="window.print()">Imprimir</button></div></div><div class="card"><h3>Info</h3><div><strong>Preguntas:</strong> <span id="qCount"></span></div></div></div></section><section id="quiz" class="quiz-shell"></section><section id="report" class="report card"><h2>Informe</h2><div class="scorebar"><div class="metric"><div class="value" id="scorePct">0%</div><div class="label">Puntuación</div></div><div class="metric"><div class="value" id="scoreHits">0</div><div class="label">Aciertos</div></div><div class="metric"><div class="value" id="scoreFails">0</div><div class="label">Errores</div></div><div class="metric"><div class="value" id="reportUser">—</div><div class="label">Usuario</div></div></div><table><thead><tr><th>#</th><th>Pregunta</th><th>Tu respuesta</th><th>Correcta</th><th>Resultado</th></tr></thead><tbody id="reportBody"></tbody></table></section></div><script>
+const quizData = "${quizDataJson}";
+const q = JSON.parse(quizData);
+const state = {answers: new Array(q.questions.length).fill(null)};
+document.getElementById('qCount').textContent = q.questions.length;
+function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function startQuiz(){renderQuiz();document.getElementById('quiz').style.display='block';document.getElementById('hero').style.display='none';}
+function renderQuiz(){const s=document.getElementById('quiz');s.innerHTML=q.questions.map((qu,i)=>'<article class="question-card"><div class="q-text">'+escapeHtml(qu.q)+'</div><div class="options">'+qu.options.map((o,j)=>'<label class="option"><input type="radio" name="q'+i+'" value="'+j+'" onchange="answerQuestion('+i+','+j+')"/><span>'+escapeHtml(o)+'</span></label>').join('')+'</div><div class="feedback" id="f'+i+'"></div></article>').join('')+'<div class="actions" style="margin-top:24px;justify-content:center;"><button class="btn-primary" onclick="submit()">Enviar</button><button class="btn-secondary" onclick="reset()">Limpiar</button></div>';}
+function answerQuestion(i,v){state.answers[i]=v;}
+function submit(){const u=state.answers.map((v,i)=>v===null?i:null).filter(v=>v!==null);if(u.length){alert('Contesta: '+u.map(i=>i+1).join(', '));return;}const user=document.getElementById('username').value.trim()||'Invitado';const h=q.questions.filter((qu,i)=>qu.correct===state.answers[i]).length;const p=Math.round(h/q.questions.length*100);q.questions.forEach((qu,i)=>{const se=state.answers[i];const ok=se===qu.correct;document.querySelector('input[name="q'+i+'"][value="'+se+'"]').parentElement.classList.add(ok?'correct':'wrong');document.querySelector('input[name="q'+i+'"][value="'+qu.correct+'"]').parentElement.classList.add('correct');const fb=document.getElementById('f'+i);fb.className='feedback '+(ok?'ok':'bad');fb.innerHTML='<h4>'+(ok?'✅':'❌')+'</h4><p><strong>Tu respuesta:</strong> '+escapeHtml(qu.options[se])+'</p>'+(ok?'':"<p><strong>Correcta:</strong> "+escapeHtml(qu.options[qu.correct])+"</p>")+(qu.explain?'<p><strong>Justificación:</strong> '+escapeHtml(qu.explain)+'</p>':'');fb.style.display='block';});document.querySelector('#quiz .actions').innerHTML='<button class="btn-primary" onclick="showReport()">Ver informe</button><button class="btn-secondary" onclick="reset()">Reintentar</button>';state.score={user,pct:p,hits:h,fails:q.questions.length-h};}
+function showReport(){document.getElementById('scorePct').textContent=state.score.pct+'%';document.getElementById('scoreHits').textContent=state.score.hits;document.getElementById('scoreFails').textContent=state.score.fails;document.getElementById('reportUser').textContent=state.score.user;document.getElementById('reportBody').innerHTML=q.questions.map((qu,i)=>{const ok=state.answers[i]===qu.correct;return'<tr><td>'+(i+1)+'</td><td>'+escapeHtml(qu.q)+'</td><td>'+escapeHtml(qu.options[state.answers[i]])+'</td><td>'+escapeHtml(qu.options[qu.correct])+'</td><td><span class="pill '+(ok?'ok':'bad')+'">'+(ok?'✓':'✗')+'</span></td></tr>';}).join('');document.getElementById('quiz').style.display='none';document.getElementById('report').style.display='block';}
+function reset(){if(confirm('¿Limpiar y volver al inicio?')){state.answers=new Array(q.questions.length).fill(null);document.getElementById('report').style.display='none';document.getElementById('quiz').style.display='none';document.getElementById('hero').style.display='block';}}
+</script></body></html>`;
+}
+</script>
+</body>
+</html>
