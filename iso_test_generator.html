@@ -1,0 +1,322 @@
+<div style="padding: 1rem 0;">
+  <div style="background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1.5rem;">
+    
+    <h2 style="margin: 0 0 0.5rem; font-size: 18px; font-weight: 500;">Generador de tests ISO/IEC</h2>
+    <p style="margin: 0 0 1.5rem; font-size: 14px; color: var(--color-text-secondary);">Convierte tu archivo de texto en 5+ tests interactivos en HTML</p>
+
+    <div id="upload-section">
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 0.5rem;">Archivo de texto con preguntas</label>
+        <input type="file" id="file-input" accept=".txt" style="width: 100%;" />
+        <p style="margin: 0.5rem 0 0; font-size: 12px; color: var(--color-text-tertiary);">Formato: TEST N: [NOMBRE] / Preguntas / CLAVE DE RESPUESTAS</p>
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 0.5rem;">Nombre de la norma / tema</label>
+        <input type="text" id="norm-name" placeholder="Ej: UNE-EN ISO 22301:2020" style="width: 100%;" />
+      </div>
+
+      <div style="margin-bottom: 1.5rem;">
+        <label style="display: block; font-size: 14px; font-weight: 500; margin-bottom: 0.5rem;">Descripción (opcional)</label>
+        <input type="text" id="norm-desc" placeholder="Ej: Sistemas de gestión de la continuidad del negocio" style="width: 100%;" />
+      </div>
+
+      <button onclick="parseAndGenerate()" style="width: 100%; padding: 0.75rem; background: var(--color-background-info); color: var(--color-text-info); border: none; border-radius: var(--border-radius-md); font-weight: 500; cursor: pointer;">
+        Analizar y generar HTMLs
+      </button>
+    </div>
+
+    <div id="results-section" style="display: none; margin-top: 2rem; padding-top: 2rem; border-top: 0.5px solid var(--color-border-tertiary);">
+      <h3 style="margin: 0 0 1rem; font-size: 16px; font-weight: 500;">✓ Generación completada</h3>
+      
+      <div id="stats" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1.5rem;">
+        <div style="background: var(--color-background-secondary); padding: 1rem; border-radius: var(--border-radius-md);">
+          <div style="font-size: 12px; color: var(--color-text-secondary);">Tests generados</div>
+          <div style="font-size: 20px; font-weight: 500;" id="test-count">5</div>
+        </div>
+        <div style="background: var(--color-background-secondary); padding: 1rem; border-radius: var(--border-radius-md);">
+          <div style="font-size: 12px; color: var(--color-text-secondary);">Preguntas totales</div>
+          <div style="font-size: 20px; font-weight: 500;" id="q-count">40</div>
+        </div>
+      </div>
+
+      <div style="background: var(--color-background-secondary); padding: 1rem; border-radius: var(--border-radius-md); margin-bottom: 1.5rem;">
+        <h4 style="margin: 0 0 0.75rem; font-size: 13px; font-weight: 500;">Archivos generados:</h4>
+        <ul style="margin: 0; padding: 0; list-style: none; font-size: 13px;">
+          <li style="padding: 0.25rem 0;">✓ index.html (landing page)</li>
+          <li style="padding: 0.25rem 0;" id="files-list"></li>
+        </ul>
+      </div>
+
+      <button onclick="downloadAll()" style="width: 100%; padding: 0.75rem; background: var(--color-background-success); color: var(--color-text-success); border: none; border-radius: var(--border-radius-md); font-weight: 500; cursor: pointer;">
+        ↓ Descargar todos los archivos (ZIP)
+      </button>
+
+      <button onclick="resetForm()" style="width: 100%; padding: 0.75rem; background: transparent; border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); font-weight: 500; cursor: pointer; margin-top: 0.75rem;">
+        Volver a empezar
+      </button>
+    </div>
+
+    <div id="error-section" style="display: none; margin-top: 1.5rem; padding: 1rem; background: var(--color-background-danger); color: var(--color-text-danger); border-radius: var(--border-radius-md); font-size: 13px;">
+      <strong style="display: block; margin-bottom: 0.5rem;">⚠ Error al procesar</strong>
+      <p id="error-text" style="margin: 0;"></p>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<script>
+let generatedData = {};
+
+function parseAndGenerate() {
+  const fileInput = document.getElementById('file-input');
+  const normName = document.getElementById('norm-name').value.trim();
+  const normDesc = document.getElementById('norm-desc').value.trim();
+  const errorSection = document.getElementById('error-section');
+  const resultsSection = document.getElementById('results-section');
+  
+  errorSection.style.display = 'none';
+  resultsSection.style.display = 'none';
+
+  if (!fileInput.files[0]) {
+    showError('Por favor, carga un archivo de texto');
+    return;
+  }
+  
+  if (!normName) {
+    showError('Por favor, ingresa el nombre de la norma');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const content = e.target.result;
+      const tests = parseTests(content);
+      
+      if (tests.length === 0) {
+        showError('No se encontraron tests en el archivo. Verifica el formato.');
+        return;
+      }
+
+      generatedData = {
+        normName,
+        normDesc,
+        tests
+      };
+
+      renderResults(tests);
+      resultsSection.style.display = 'block';
+      document.getElementById('upload-section').style.opacity = '0.5';
+      document.getElementById('upload-section').style.pointerEvents = 'none';
+    } catch (err) {
+      showError(err.message);
+    }
+  };
+  reader.readAsText(fileInput.files[0]);
+}
+
+function parseTests(content) {
+  const tests = [];
+  const lines = content.split('\n');
+  
+  let currentTest = null;
+  let currentQuestion = null;
+  let answerKey = {};
+  let parsingAnswers = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    // Detección de inicio de test
+    if (line.match(/^TEST\s+\d+:/i)) {
+      if (currentTest && currentQuestion) {
+        if (!currentQuestion.options || currentQuestion.options.length === 0) {
+          throw new Error(`Pregunta incompleta en test ${currentTest.number}`);
+        }
+      }
+      
+      if (currentTest && Object.keys(answerKey).length > 0) {
+        currentTest.answerKey = answerKey;
+      }
+
+      const match = line.match(/^TEST\s+(\d+):\s*(.+)/i);
+      currentTest = {
+        number: parseInt(match[1]),
+        title: match[2].trim(),
+        questions: [],
+        answerKey: {}
+      };
+      tests.push(currentTest);
+      currentQuestion = null;
+      answerKey = {};
+      parsingAnswers = false;
+      continue;
+    }
+
+    // Detección de clave de respuestas
+    if (line.match(/^CLAVE DE RESPUESTAS/i)) {
+      parsingAnswers = true;
+      continue;
+    }
+
+    // Si estamos en la sección de respuestas
+    if (parsingAnswers && line.match(/^\d+\.\s+Respuesta Correcta:\s*([A-D])/i)) {
+      const match = line.match(/^(\d+)\.\s+Respuesta Correcta:\s*([A-D])/i);
+      const qNum = parseInt(match[1]);
+      const answerLetter = match[2];
+      const answerIndex = answerLetter.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
+      answerKey[qNum] = { index: answerIndex, letter: answerLetter };
+      
+      // Buscar la justificación
+      if (i + 1 < lines.length && lines[i + 1].trim().match(/^Justificación:/i)) {
+        let justification = '';
+        let j = i + 2;
+        while (j < lines.length && !lines[j].trim().match(/^\d+\.\s+Respuesta/i) && !lines[j].trim().match(/^===|^---|-{4,}/)) {
+          if (lines[j].trim()) justification += lines[j].trim() + ' ';
+          j++;
+        }
+        answerKey[qNum].explain = justification.trim();
+      }
+      continue;
+    }
+
+    // Detección de preguntas (número al inicio)
+    if (!parsingAnswers && line.match(/^\d+\.\s+/)) {
+      if (currentQuestion && currentQuestion.options && currentQuestion.options.length === 4) {
+        if (currentTest) currentTest.questions.push(currentQuestion);
+      }
+      
+      const match = line.match(/^\d+\.\s+(.+)/);
+      currentQuestion = {
+        number: currentTest.questions.length + 1,
+        text: match[1].trim(),
+        options: []
+      };
+      continue;
+    }
+
+    // Detección de opciones (A, B, C, D)
+    if (!parsingAnswers && currentQuestion && line.match(/^[A-D]\)\s+/)) {
+      const match = line.match(/^[A-D]\)\s+(.+)/);
+      if (match) {
+        currentQuestion.options.push(match[1].trim());
+      }
+    }
+  }
+
+  // Agregar la última pregunta y test
+  if (currentQuestion && currentQuestion.options.length === 4 && currentTest) {
+    currentTest.questions.push(currentQuestion);
+  }
+  if (currentTest && Object.keys(answerKey).length > 0) {
+    currentTest.answerKey = answerKey;
+  }
+
+  return tests;
+}
+
+function renderResults(tests) {
+  const totalQuestions = tests.reduce((sum, t) => sum + t.questions.length, 0);
+  document.getElementById('test-count').textContent = tests.length;
+  document.getElementById('q-count').textContent = totalQuestions;
+  
+  let filesList = '';
+  tests.forEach((t, idx) => {
+    filesList += `<li style="padding: 0.25rem 0;">✓ test_${idx + 1}_${slugify(t.title)}.html</li>`;
+  });
+  document.getElementById('files-list').innerHTML = filesList;
+}
+
+function slugify(text) {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+}
+
+function showError(msg) {
+  const errorSection = document.getElementById('error-section');
+  document.getElementById('error-text').textContent = msg;
+  errorSection.style.display = 'block';
+}
+
+function resetForm() {
+  document.getElementById('file-input').value = '';
+  document.getElementById('norm-name').value = '';
+  document.getElementById('norm-desc').value = '';
+  document.getElementById('results-section').style.display = 'none';
+  document.getElementById('upload-section').style.opacity = '1';
+  document.getElementById('upload-section').style.pointerEvents = 'auto';
+  generatedData = {};
+}
+
+function downloadAll() {
+  const zip = new JSZip();
+  const { normName, normDesc, tests } = generatedData;
+
+  // Generar index.html
+  const indexHtml = generateIndexHtml(normName, normDesc, tests);
+  zip.file('index.html', indexHtml);
+
+  // Generar cada test
+  tests.forEach((test, idx) => {
+    const testHtml = generateTestHtml(normName, test, idx + 1, tests.length);
+    const filename = `test_${idx + 1}_${slugify(test.title)}.html`;
+    zip.file(filename, testHtml);
+  });
+
+  // Descargar ZIP
+  zip.generateAsync({ type: 'blob' }).then((content) => {
+    saveAs(content, `${slugify(normName)}_tests.zip`);
+  });
+}
+
+function generateIndexHtml(normName, normDesc, tests) {
+  const testCards = tests.map((test, idx) => `
+    <div class='card'>
+      <span class='badge'>Test ${idx + 1}</span>
+      <h3>${test.title}</h3>
+      <p>${test.questions.length} preguntas</p>
+      <a href='./test_${idx + 1}_${slugify(test.title)}.html'>Comenzar →</a>
+    </div>
+  `).join('');
+
+  return `<!doctype html>
+<html lang='es'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'><title>${normName} · Tests de autoevaluación</title>
+<style>
+:root{--bg:#0b1020;--panel:#141b34;--panel-2:#1b2447;--text:#eef2ff;--muted:#b9c2e6;--ok:#1db954;--bad:#ff5d73;--accent:#6ea8fe;--accent-2:#9b7bff;--border:#2a3567;}*{box-sizing:border-box}body{font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#0a0f1f,#101733 45%,#0d1430);color:var(--text);margin:0;padding:32px}.wrap{max-width:1000px;margin:0 auto}.hero{background:linear-gradient(135deg,rgba(110,168,254,.18),rgba(155,123,255,.16));border:1px solid var(--border);border-radius:22px;padding:32px;margin-bottom:32px}h1{margin:0 0 12px;font-size:42px;line-height:1.1}p.lead{margin:0 0 20px;color:var(--muted);font-size:18px;line-height:1.6}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}.card{background:rgba(20,27,52,.92);border:1px solid var(--border);border-radius:18px;padding:24px;transition:.2s}.card:hover{border-color:#6ea8fe;transform:translateY(-2px)}.card h3{margin:0 0 10px;font-size:20px}.card .badge{display:inline-block;background:#0f1733;border:1px solid var(--border);color:var(--muted);padding:6px 10px;border-radius:999px;font-size:12px;margin-bottom:12px}.card p{color:var(--muted);margin:0 0 16px;font-size:14px;line-height:1.5}.card a{display:inline-block;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;padding:10px 20px;border-radius:10px;text-decoration:none;font-weight:700;transition:.2s}.card a:hover{transform:scale(1.02)}.footer{margin-top:32px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:13px;line-height:1.6}
+</style></head><body><div class='wrap'><section class='hero'><h1>${normName}</h1><p class='lead'>${normDesc || 'Tests de opción múltiple con explicaciones detalladas de cada respuesta y referencias normativas. Autoevaluación interactiva sin almacenamiento de datos.'}</p></div><div class='grid'>${testCards}</div><section class='footer'><strong>📋 Características:</strong> Sin almacenamiento de datos · Cálculos en navegador · Reportes imprimibles · Explicaciones inmediatas · Nivel experto riguroso</section></div></body></html>`;
+}
+
+function generateTestHtml(normName, test, testNum, totalTests) {
+  const quizData = {
+    title: `${normName} · Test ${testNum} · ${test.title}`,
+    questions: test.questions.map((q, idx) => ({
+      q: q.text,
+      options: q.options,
+      correct: test.answerKey[idx + 1] ? test.answerKey[idx + 1].index : 0,
+      explain: test.answerKey[idx + 1] ? test.answerKey[idx + 1].explain : ''
+    }))
+  };
+
+  const quizDataJson = JSON.stringify(quizData).replace(/"/g, '\\"').replace(/\n/g, '\\n');
+
+  return `<!doctype html>
+<html lang="es"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>${quizData.title}</title><style>
+:root{--bg:#0b1020;--panel:#141b34;--panel-2:#1b2447;--text:#eef2ff;--muted:#b9c2e6;--ok:#1db954;--bad:#ff5d73;--accent:#6ea8fe;--accent-2:#9b7bff;--border:#2a3567;}*{box-sizing:border-box}body{margin:0;font-family:Inter,Segoe UI,Arial,sans-serif;background:linear-gradient(180deg,#0a0f1f,#101733 45%,#0d1430);color:var(--text)}.container{max-width:1100px;margin:0 auto;padding:24px}.hero{background:linear-gradient(135deg,rgba(110,168,254,.18),rgba(155,123,255,.16));border:1px solid var(--border);border-radius:22px;padding:24px 24px 18px;box-shadow:0 20px 50px rgba(0,0,0,.25)}.badges{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 6px}.badge{background:#0f1733;border:1px solid var(--border);color:var(--muted);padding:8px 12px;border-radius:999px;font-size:13px}h1{margin:0 0 10px;font-size:34px;line-height:1.15}p.lead{margin:0;color:var(--muted);line-height:1.6}.grid{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;margin-top:18px}.card{background:rgba(20,27,52,.92);border:1px solid var(--border);border-radius:18px;padding:18px}.card h2,.card h3{margin-top:0}label{display:block;font-weight:700;margin:10px 0 6px}input[type=text]{width:100%;padding:14px 14px;border-radius:12px;border:1px solid var(--border);background:#0d1530;color:var(--text);font-size:15px}.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:14px}button{border:0;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}.btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white}.btn-secondary{background:#202c57;color:var(--text);border:1px solid var(--border)}.meta{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:14px}.quiz-shell{display:none;margin-top:22px}.question-card{background:rgba(20,27,52,.96);border:1px solid var(--border);border-radius:18px;padding:18px;margin-bottom:16px}.q-index{font-size:13px;color:var(--muted)}.q-text{font-size:20px;font-weight:800;line-height:1.4;margin:8px 0 14px}.options{display:grid;gap:10px}.option{border:1px solid var(--border);background:#0f1733;border-radius:14px;padding:14px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:.15s}.option:hover{transform:translateY(-1px);border-color:#4b62b0}.option input{margin-top:4px;cursor:pointer}.option.correct{border-color:rgba(29,185,84,.7);background:rgba(29,185,84,.12)}.option.wrong{border-color:rgba(255,93,115,.7);background:rgba(255,93,115,.12)}.feedback{display:none;margin-top:14px;padding:14px;border-radius:14px;border:1px solid var(--border);background:#111936;font-size:13px}.feedback.ok{border-color:rgba(29,185,84,.45)}.feedback.bad{border-color:rgba(255,93,115,.45)}.feedback h4{margin:0 0 8px}.feedback p{margin:6px 0}.muted{color:var(--muted)}.scorebar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.metric{background:#0f1733;border:1px solid var(--border);border-radius:16px;padding:14px}.metric .value{font-size:28px;font-weight:900}.metric .label{color:var(--muted);font-size:13px}.report{display:none;margin-top:26px}.report table{width:100%;border-collapse:collapse;font-size:14px}.report th,.report td{border:1px solid var(--border);padding:10px;vertical-align:top}.report th{background:#121b39;text-align:left}.pill{display:inline-block;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800}.pill.ok{background:rgba(29,185,84,.16);color:#93ffc0;border:1px solid rgba(29,185,84,.35)}.pill.bad{background:rgba(255,93,115,.14);color:#ffb2bc;border:1px solid rgba(255,93,115,.35)}.footer-note{margin-top:16px;color:var(--muted);font-size:13px;line-height:1.5}@media print{body{background:white;color:black}.hero,.card,.question-card,.metric{box-shadow:none;background:white;color:black;border:1px solid #bbb}.btn-primary,.btn-secondary,.actions{display:none !important}.report{display:block !important}.quiz-shell{display:none !important}}@media (max-width:860px){.grid{grid-template-columns:1fr}.scorebar{grid-template-columns:1fr 1fr}}
+</style></head><body><div class="container"><section class="hero" id="hero"><div class="badges"><span class="badge">Test ${testNum} de ${totalTests}</span><span class="badge">Nivel experto</span><span class="badge">${test.questions.length} preguntas</span></div><h1>${normName}</h1><p class="lead">${test.title}</p><div class="grid"><div class="card"><h2>Identificación del intento</h2><label for="username">Usuario visible en el informe</label><input id="username" type="text" maxlength="80" placeholder="Ej.: Nombre completo / Cargo" /><div class="actions"><button class="btn-primary" onclick="startQuiz()">Comenzar test</button><button class="btn-secondary" onclick="window.print()">Imprimir informe</button></div><p class="footer-note">No se almacenan datos. Los cálculos ocurren en tu navegador únicamente.</p></div><div class="card"><h3>Datos visibles</h3><div class="meta"><div><strong>Fecha:</strong> <span id="today"></span></div><div><strong>Preguntas:</strong> <span id="qCount"></span></div><div><strong>Nivel:</strong> Experto</div></div></div></div></section><section id="quiz" class="quiz-shell"></section><section id="report" class="report card"><h2>Informe del intento</h2><div class="scorebar"><div class="metric"><div class="value" id="scorePct">0%</div><div class="label">Puntuación</div></div><div class="metric"><div class="value" id="scoreHits">0</div><div class="label">Aciertos</div></div><div class="metric"><div class="value" id="scoreFails">0</div><div class="label">Errores</div></div><div class="metric"><div class="value" id="reportUser">—</div><div class="label">Usuario</div></div></div><p class="muted"><strong>Fecha visible:</strong> <span id="reportDate"></span></p><table><thead><tr><th>#</th><th>Pregunta</th><th>Tu respuesta</th><th>Respuesta correcta</th><th>Resultado</th></tr></thead><tbody id="reportBody"></tbody></table><p class="footer-note">Revisa las preguntas fallidas consultando la documentación de ${normName}.</p></section></div><script>
+const quizData = ${quizDataJson};
+const state = {answers: new Array(quizData.questions.length).fill(null)};
+function formatDate(){const d=new Date();return d.toLocaleString('es-ES',{dateStyle:'full',timeStyle:'short'});}
+document.getElementById('today').textContent=formatDate();document.getElementById('qCount').textContent=quizData.questions.length;document.title=quizData.title;
+function escapeHtml(str){return String(str).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');}
+function startQuiz(){renderQuiz();document.getElementById('quiz').style.display='block';document.getElementById('hero').style.display='none';window.scrollTo({top:document.getElementById('quiz').offsetTop-10,behavior:'smooth'});}
+function renderQuiz(){const shell=document.getElementById('quiz');shell.innerHTML=quizData.questions.map((q,idx)=>\`<article class="question-card" id="q-\${idx}"><div class="q-index">Pregunta \${idx+1} de \${quizData.questions.length}</div><div class="q-text">\${escapeHtml(q.q)}</div><div class="options">\${q.options.map((opt,optIdx)=>\`<label class="option" id="q-\${idx}-opt-\${optIdx}"><input type="radio" name="q-\${idx}" value="\${optIdx}" onchange="answerQuestion(\${idx},\${optIdx})" /><span>\${escapeHtml(opt)}</span></label>\`).join('')}</div><div class="feedback" id="feedback-\${idx}"></div></article>\`).join('');shell.innerHTML+=\`<div class="actions" style="margin-top:24px;justify-content:center;"><button class="btn-primary" onclick="finishQuiz()">Enviar respuestas</button><button class="btn-secondary" onclick="resetQuiz()">Limpiar formulario</button></div>\";}
+function answerQuestion(idx,selected){state.answers[idx]=selected;}
+function finishQuiz(){const unanswered=state.answers.map((v,i)=>v===null?i:null).filter(v=>v!==null);if(unanswered.length){alert('Debes contestar todas las preguntas. Pendientes: '+unanswered.map(i=>i+1).join(', '));document.getElementById(\`q-\${unanswered[0]}\`).scrollIntoView({behavior:'smooth',block:'center'});return;}const user=document.getElementById('username').value.trim()||'Invitado';const total=quizData.questions.length;const hits=quizData.questions.filter((q,i)=>q.correct===state.answers[i]).length;const fails=total-hits;const pct=Math.round((hits/total)*100);quizData.questions.forEach((q,idx)=>{const selected=state.answers[idx];const ok=selected===q.correct;const el=document.getElementById(\`q-\${idx}-opt-\${selected}\`);el.classList.add(ok?'correct':'wrong');document.getElementById(\`q-\${idx}-opt-\${q.correct}\`).classList.add('correct');const fb=document.getElementById(\`feedback-\${idx}\`);fb.className='feedback '+(ok?'ok':'bad');fb.innerHTML=\`<h4>\${ok?'✅ Respuesta correcta':'❌ Respuesta incorrecta'}</h4><p><strong>Tu elección:</strong> \${escapeHtml(q.options[selected])}</p>\${!ok?\`<p><strong>Respuesta correcta:</strong> \${escapeHtml(q.options[q.correct])}</p>\`:''}\${q.explain?\`<p><strong>Justificación:</strong> \${escapeHtml(q.explain)}</p>\`:''}\`;fb.style.display='block';});document.querySelector('#quiz .actions').innerHTML=\`<button class="btn-primary" onclick="showReport()">Ver informe final</button><button class="btn-secondary" onclick="resetQuiz()">Volver a comenzar</button>\`;state.finalScore={user:user,pct:pct,hits:hits,fails:fails};window.scrollTo({top:document.getElementById('quiz').offsetTop-10,behavior:'smooth'});}
+function showReport(){const total=quizData.questions.length;document.getElementById('scorePct').textContent=state.finalScore.pct+'%';document.getElementById('scoreHits').textContent=state.finalScore.hits;document.getElementById('scoreFails').textContent=state.finalScore.fails;document.getElementById('reportUser').textContent=state.finalScore.user;document.getElementById('reportDate').textContent=formatDate();document.getElementById('reportBody').innerHTML=quizData.questions.map((q,i)=>{const selected=state.answers[i];const ok=selected===q.correct;return\`<tr><td>\${i+1}</td><td>\${escapeHtml(q.q)}</td><td>\${escapeHtml(q.options[selected])}</td><td>\${escapeHtml(q.options[q.correct])}</td><td><span class="pill \${ok?'ok':'bad'}">\${ok?'Correcta':'Incorrecta'}</span></td></tr>\`;}).join('');document.getElementById('quiz').style.display='none';document.getElementById('report').style.display='block';document.getElementById('report').scrollIntoView({behavior:'smooth',block:'start'});}
+function resetQuiz(){if(confirm('¿Limpiar y volver al inicio?')){state.answers=new Array(quizData.questions.length).fill(null);document.getElementById('report').style.display='none';document.getElementById('quiz').style.display='none';document.getElementById('hero').style.display='block';window.scrollTo({top:0,behavior:'smooth'});}}
+</script></body></html>`;
+}
+</script>
+</div>
