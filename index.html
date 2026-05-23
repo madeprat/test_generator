@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generador de Tests ISO/IEC</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #141b34;
+      --text: #eef2ff;
+      --muted: #b9c2e6;
+      --accent: #6ea8fe;
+      --accent-2: #9b7bff;
+      --ok: #1db954;
+      --bad: #ff5d73;
+      --border: #2a3567;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(180deg, #0a0f1f 0%, #101733 45%, #0d1430 100%);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    /* Header */
+    header {
+      padding: 40px 0;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: rgba(10, 15, 31, 0.95);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    header .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-size: 24px;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      margin-left: 32px;
+      transition: color 0.3s;
+    }
+
+    nav a:hover {
+      color: var(--text);
+    }
+
+    /* Hero */
+    .hero {
+      padding: 120px 0 80px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 64px;
+      font-weight: 900;
+      margin-bottom: 20px;
+      line-height: 1.2;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero p {
+      font-size: 20px;
+      color: var(--muted);
+      margin-bottom: 40px;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .cta-buttons {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 80px;
+    }
+
+    .btn {
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: all 0.3s;
+      font-size: 16px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      color: white;
+      box-shadow: 0 4px 20px rgba(110, 168, 254, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 30px rgba(110, 168, 254, 0.5);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--accent);
+      border: 2px solid var(--accent);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(110, 168, 254, 0.1);
+    }
+
+    /* Features */
+    .features {
+      padding: 80px 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 32px;
+      margin-bottom: 80px;
+    }
+
+    .feature {
+      background: rgba(20, 27, 52, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s;
+    }
+
+    .feature:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(110, 168, 254, 0.1);
+    }
+
+    .feature-icon {
+      font-size: 40px;
+      margin-bottom: 16px;
+    }
+
+    .feature h3 {
+      font-size: 20px;
+      margin-bottom: 12px;
+    }
+
+    .feature p {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+
+    /* How it works */
+    .how-it-works {
+      padding: 80px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .how-it-works h2 {
+      font-size: 42px;
+      text-align: center;
+      margin-bottom: 60px;
+      font-weight: 800;
+    }
+
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 24px;
+    }
+
+    .step {
+      background: rgba(20, 27, 52, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .step-number {
+      display: inline-block;
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+
+    .step h3 {
+      font-size: 18px;
+      margin-bottom: 12px;
+    }
+
+    .step p {
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    /* Benefits */
+    .benefits {
+      padding: 80px 0;
+    }
+
+    .benefits h2 {
+      font-size: 42px;
+      text-align: center;
+      margin-bottom: 60px;
+      font-weight: 800;
+    }
+
+    .benefits-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+      margin-bottom: 40px;
+    }
+
+    .benefit-item {
+      padding: 24px;
+      background: rgba(20, 27, 52, 0.3);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+    }
+
+    .benefit-item strong {
+      color: var(--accent);
+    }
+
+    /* CTA Section */
+    .cta-section {
+      background: linear-gradient(135deg, rgba(110, 168, 254, 0.1), rgba(155, 123, 255, 0.1));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 60px 40px;
+      text-align: center;
+      margin-bottom: 80px;
+    }
+
+    .cta-section h2 {
+      font-size: 36px;
+      margin-bottom: 20px;
+      font-weight: 800;
+    }
+
+    .cta-section p {
+      color: var(--muted);
+      font-size: 18px;
+      margin-bottom: 32px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* FAQ */
+    .faq {
+      padding: 80px 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .faq h2 {
+      font-size: 42px;
+      text-align: center;
+      margin-bottom: 60px;
+      font-weight: 800;
+    }
+
+    .faq-item {
+      background: rgba(20, 27, 52, 0.5);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .faq-item:hover {
+      border-color: var(--accent);
+    }
+
+    .faq-item h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .faq-item.active p {
+      display: block;
+    }
+
+    .faq-item p {
+      color: var(--muted);
+      font-size: 14px;
+      display: none;
+      line-height: 1.8;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    footer a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero h1 {
+        font-size: 42px;
+      }
+
+      .hero p {
+        font-size: 16px;
+      }
+
+      .cta-buttons {
+        flex-direction: column;
+      }
+
+      nav {
+        display: none;
+      }
+
+      header .container {
+        justify-content: center;
+      }
+
+      .how-it-works h2,
+      .benefits h2,
+      .faq h2 {
+        font-size: 32px;
+      }
+
+      .cta-section {
+        padding: 40px 24px;
+      }
+
+      .cta-section h2 {
+        font-size: 28px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="container">
+      <div class="logo">📊 Test Generator</div>
+      <nav>
+        <a href="#features">Características</a>
+        <a href="#how">Cómo funciona</a>
+        <a href="#faq">Preguntas</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <h1>Generador de Tests ISO/IEC</h1>
+      <p>Convierte tus preguntas en tests interactivos en HTML. Sin servidor, sin base de datos, completamente tuyo.</p>
+      
+      <div class="cta-buttons">
+        <a href="generador_tests_iso.html" class="btn btn-primary">Abrir Generador →</a>
+        <a href="#how" class="btn btn-secondary">Ver Cómo Funciona</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section id="features" class="container">
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">⚡</div>
+        <h3>Súper Rápido</h3>
+        <p>Carga tu archivo de texto, elige la norma y genera tests en segundos. Sin procesamiento en servidor.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">🔐</div>
+        <h3>100% Privado</h3>
+        <p>Todo ocurre en tu navegador. Sin datos en la nube, sin tracking, sin almacenamiento en servidor.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">🎨</div>
+        <h3>Profesional</h3>
+        <p>Diseño moderno, responsive, imprimible. Tests listos para usar en cualquier dispositivo.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">📦</div>
+        <h3>Descargable</h3>
+        <p>Genera un ZIP con todos los HTMLs. Úsalos donde quieras, sin dependencias externas.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">🔄</div>
+        <h3>Reutilizable</h3>
+        <p>Genera 1 test o 100. Para ISO 22301, ISO 19011, o cualquier norma que necesites.</p>
+      </div>
+
+      <div class="feature">
+        <div class="feature-icon">📱</div>
+        <h3>Responsive</h3>
+        <p>Funciona en PC, tablet y móvil. Tests adaptados a cualquier pantalla.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section id="how" class="how-it-works">
+    <div class="container">
+      <h2>¿Cómo Funciona?</h2>
+      
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <h3>Prepara tu archivo</h3>
+          <p>Crea un .txt con tus preguntas en formato estándar (ver documentación).</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">2</div>
+          <h3>Carga el archivo</h3>
+          <p>Abre el generador, carga tu .txt e ingresa el nombre de la norma.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">3</div>
+          <h3>Analiza</h3>
+          <p>El generador parsea automáticamente tus preguntas y respuestas.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">4</div>
+          <h3>Descarga</h3>
+          <p>Obtén un ZIP con index.html + tests_1.html, test_2.html, etc.</p>
+        </div>
+
+        <div class="step">
+          <div class="step-number">5</div>
+          <h3>Usa</h3>
+          <p>Descomprime y abre en navegador. Los tests funcionan sin conexión.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Benefits -->
+  <section class="benefits">
+    <div class="container">
+      <h2>Ventajas</h2>
+      
+      <div class="benefits-grid">
+        <div class="benefit-item">
+          <strong>✓ Sin instalación</strong><br>
+          Abre en navegador y usa. No hay descarga de software ni configuración.
+        </div>
+
+        <div class="benefit-item">
+          <strong>✓ Sin costos</strong><br>
+          Generador gratuito. Los tests generados son tuyos para siempre.
+        </div>
+
+        <div class="benefit-item">
+          <strong>✓ Flexible</strong><br>
+          Soporta múltiples formatos de archivo. Parser inteligente y tolerante.
+        </div>
+
+        <div class="benefit-item">
+          <strong>✓ Personalizable</strong><br>
+          Código HTML completo. Personaliza colores, textos y comportamiento.
+        </div>
+
+        <div class="benefit-item">
+          <strong>✓ Independiente</strong><br>
+          No depende de servicios externos. Aún funciona sin internet (excepto descarga).
+        </div>
+
+        <div class="benefit-item">
+          <strong>✓ Escalable</strong><br>
+          Genera 1 pregunta o 1000. Sin límites, sin degradación de rendimiento.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Section -->
+  <section class="cta-section">
+    <div class="container">
+      <h2>¿Listo para Empezar?</h2>
+      <p>Crea tus primeros tests ahora mismo. Solo necesitas un archivo de texto con tus preguntas.</p>
+      <a href="generador_tests_iso.html" class="btn btn-primary">Abrir Generador</a>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="faq">
+    <div class="container">
+      <h2>Preguntas Frecuentes</h2>
+
+      <div class="faq-item">
+        <h3>¿Necesito un servidor especial? <span>+</span></h3>
+        <p>No. El generador funciona en cualquier servidor web. Puedes alojarlo en Apache, Nginx, GitHub Pages, o incluso usarlo local sin servidor.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>¿Mis preguntas se almacenan en la nube? <span>+</span></h3>
+        <p>No. Todo ocurre en tu navegador. Las preguntas nunca salen de tu computadora. El generador no tiene backend ni base de datos.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>¿Cuántos tests puedo generar? <span>+</span></h3>
+        <p>Ilimitados. Genera 1, 5, 10 o 100 tests. El generador funciona igual sin importar cuántos crees.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>¿Puedo personalizar el diseño de los tests? <span>+</span></h3>
+        <p>Sí. Los HTMLs generados son código completo. Puedes editar colores, fuentes, textos y comportamiento como necesites.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>¿Funciona offline? <span>+</span></h3>
+        <p>El generador sí funciona offline. Los tests generados funcionan offline también (excepto la descarga inicial del ZIP que requiere navegador).</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>¿Qué formato debe tener mi archivo .txt? <span>+</span></h3>
+        <p>Consulta la documentación ESTRUCTURA_ARCHIVOS.md para ver el formato exacto. El parser es flexible y tolera variaciones menores.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>¿Puedo integrar esto en mi aplicación? <span>+</span></h3>
+        <p>Sí. El código es tuyo. Puedes extraer el JavaScript, usarlo como iframe, o adaptarlo como necesites.</p>
+      </div>
+
+      <div class="faq-item">
+        <h3>¿Hay soporte técnico? <span>+</span></h3>
+        <p>La documentación incluye CHEATSHEET.txt para referencia rápida, ESTRUCTURA_ARCHIVOS.md para el formato, e INSTRUCCIONES_DESPLIEGUE.md para hosting.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <p>Generador de Tests ISO/IEC v2.0 | <a href="generador_tests_iso.html">Abrir Generador</a></p>
+      <p style="margin-top: 16px; font-size: 12px;">Documentación: ESTRUCTURA_ARCHIVOS.md • INSTRUCCIONES_DESPLIEGUE.md • CHEATSHEET.txt</p>
+    </div>
+  </footer>
+
+  <script>
+    // FAQ Toggle
+    document.querySelectorAll('.faq-item').forEach(item => {
+      item.addEventListener('click', () => {
+        item.classList.toggle('active');
+        const icon = item.querySelector('span');
+        icon.textContent = item.classList.contains('active') ? '−' : '+';
+      });
+    });
+
+    // Smooth scroll
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
